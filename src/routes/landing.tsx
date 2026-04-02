@@ -197,10 +197,86 @@ app.get('/', async (c) => {
         .landing-right {
           flex: 1;
           display: flex;
-          align-items: center;
-          justify-content: center;
+          flex-direction: column;
           padding: 2rem;
           position: relative;
+        }
+
+        /* ── Tab bar ── */
+        .tab-bar {
+          display: flex;
+          gap: 0;
+          border-bottom: 1.5px solid var(--border);
+          margin-bottom: 1rem;
+          padding: 0 2rem;
+        }
+        .tab-btn {
+          background: none;
+          border: none;
+          padding: 0.6rem 1.2rem;
+          font-family: 'Space Mono', monospace;
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: var(--fg-muted);
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -1.5px;
+          transition: color 0.15s;
+        }
+        .tab-btn:hover { color: var(--fg); }
+        .tab-btn.is-active {
+          color: var(--fg);
+          border-bottom-color: var(--border-strong);
+        }
+        .tab-panel { display: none; }
+        .tab-panel.is-active { display: flex; align-items: center; justify-content: center; flex: 1; }
+
+        /* ── Discover view ── */
+        .discover-view {
+          text-align: center;
+          padding: 2rem;
+        }
+        .discover-name {
+          font-size: 1.8rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: var(--fg);
+          margin-bottom: 0.3rem;
+        }
+        .discover-meta {
+          font-size: 0.9rem;
+          color: var(--fg-muted);
+          margin-bottom: 1.8rem;
+        }
+        .discover-visit {
+          display: inline-block;
+          padding: 0.6rem 1.8rem;
+          border: 1.5px solid var(--border-strong);
+          border-radius: 4px;
+          font-family: 'Space Mono', monospace;
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: var(--fg);
+          text-decoration: none;
+          transition: opacity 0.15s;
+        }
+        .discover-visit:hover { opacity: 0.6; }
+        .discover-visit:visited { color: var(--fg); }
+        .discover-shuffle {
+          display: block;
+          margin: 1rem auto 0;
+          background: none;
+          border: none;
+          font-family: 'Space Mono', monospace;
+          font-size: 0.8rem;
+          color: var(--fg-muted);
+          cursor: pointer;
+          padding: 0.4rem 1rem;
+          transition: color 0.15s;
+        }
+        .discover-shuffle:hover { color: var(--fg); }
+        .discover-fade {
+          transition: opacity 0.2s ease;
         }
         .landing-map-stage {
           width: min(100%, 640px);
@@ -311,6 +387,10 @@ app.get('/', async (c) => {
           .landing-map-stage { width: 100%; padding: 1.25rem 0.25rem 1.75rem; }
           .landing-theme-toggle { top: 1.2rem; right: 1rem; width: 30px; height: 30px; }
           .landing-theme-toggle svg { width: 14px; height: 14px; }
+          .tab-bar { padding: 0 1.5rem; }
+          .tab-btn { font-size: 0.72rem; padding: 0.5rem 0.8rem; }
+          .discover-name { font-size: 1.4rem; }
+          .discover-visit { font-size: 0.8rem; padding: 0.5rem 1.4rem; }
         }
       </style>`)}
       {raw(`<noscript><style>.join-body { max-height: none !important; } .join-toggle { display: none; }</style></noscript>`)}
@@ -364,41 +444,60 @@ app.get('/', async (c) => {
         </div>
 
         <div class="landing-right">
-          <div class="landing-map-stage">
-            <svg
-              class="canada-map"
-              viewBox={CANADA_VIEWBOX}
-              xmlns="http://www.w3.org/2000/svg"
-              role="img"
-              aria-label={`Map of Canada showing ${active.filter(m => m.lat != null).length} member locations`}
-            >
-              <path d={CANADA_OUTLINE_PATH} class="canada-shadow" />
-              <path d={CANADA_OUTLINE_PATH} class="canada-silhouette" />
-              {CANADA_REGION_PATHS.map((region) => (
-                <path d={region.d} class="canada-region" data-region={region.id}>
-                  <title>{region.name}</title>
-                </path>
-              ))}
-              <path d={CANADA_OUTLINE_PATH} class="canada-outline" />
-              {active.map((m) => {
-                if (m.lat == null || m.lng == null) return null
-                const { x, y } = projectToSvg(m.lat, m.lng)
-                return (
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r="9"
-                    class="canada-dot"
-                    data-slug={m.slug}
-                  >
-                    <title>{m.name}{m.city ? ` — ${m.city}` : ''}</title>
-                  </circle>
-                )
-              })}
-            </svg>
+          <div class="tab-bar" role="tablist">
+            <button class="tab-btn is-active" role="tab" aria-selected="true" data-tab="map" aria-controls="tab-panel-map">Map</button>
+            <button class="tab-btn" role="tab" aria-selected="false" data-tab="discover" aria-controls="tab-panel-discover">Discover</button>
+          </div>
+
+          <div class="tab-panel is-active" id="tab-panel-map" role="tabpanel">
+            <div class="landing-map-stage">
+              <svg
+                class="canada-map"
+                viewBox={CANADA_VIEWBOX}
+                xmlns="http://www.w3.org/2000/svg"
+                role="img"
+                aria-label={`Map of Canada showing ${active.filter(m => m.lat != null).length} member locations`}
+              >
+                <path d={CANADA_OUTLINE_PATH} class="canada-shadow" />
+                <path d={CANADA_OUTLINE_PATH} class="canada-silhouette" />
+                {CANADA_REGION_PATHS.map((region) => (
+                  <path d={region.d} class="canada-region" data-region={region.id}>
+                    <title>{region.name}</title>
+                  </path>
+                ))}
+                <path d={CANADA_OUTLINE_PATH} class="canada-outline" />
+                {active.map((m) => {
+                  if (m.lat == null || m.lng == null) return null
+                  const { x, y } = projectToSvg(m.lat, m.lng)
+                  return (
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="9"
+                      class="canada-dot"
+                      data-slug={m.slug}
+                    >
+                      <title>{m.name}{m.city ? ` — ${m.city}` : ''}</title>
+                    </circle>
+                  )
+                })}
+              </svg>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tab-panel-discover" role="tabpanel">
+            <div class="discover-view">
+              <div class="discover-fade" id="discover-card">
+                <div class="discover-name" id="discover-name"></div>
+                <div class="discover-meta" id="discover-meta"></div>
+                <a class="discover-visit" id="discover-visit" href="#" target="_blank" rel="noopener noreferrer">Visit site {raw('&rarr;')}</a>
+              </div>
+              <button class="discover-shuffle" id="discover-shuffle">{raw('&#x1F500;')} shuffle</button>
+            </div>
           </div>
         </div>
       </div>
+      {raw(`<script>var __discoverMembers = ${JSON.stringify(active.map(m => ({ slug: m.slug, name: m.name, url: m.url, city: m.city ?? '', type: m.type })))};</script>`)}
       {raw(`<script>
 (function() {
   // Join toggle
@@ -431,6 +530,70 @@ app.get('/', async (c) => {
         dot.classList.remove('is-highlighted');
       });
     });
+  });
+
+  // Tab switching
+  var tabs = document.querySelectorAll('.tab-btn');
+  var panels = document.querySelectorAll('.tab-panel');
+
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t) {
+        t.classList.remove('is-active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      panels.forEach(function(p) { p.classList.remove('is-active'); });
+
+      tab.classList.add('is-active');
+      tab.setAttribute('aria-selected', 'true');
+      var panelId = 'tab-panel-' + tab.getAttribute('data-tab');
+      document.getElementById(panelId).classList.add('is-active');
+    });
+  });
+
+  // Discover — random member
+  var discoverRecent = [];
+  var discoverCard = document.getElementById('discover-card');
+  var discoverName = document.getElementById('discover-name');
+  var discoverMeta = document.getElementById('discover-meta');
+  var discoverVisit = document.getElementById('discover-visit');
+
+  function showRandomMember() {
+    var available = __discoverMembers.filter(function(m) {
+      return discoverRecent.indexOf(m.slug) === -1;
+    });
+    if (available.length === 0) {
+      discoverRecent = [];
+      available = __discoverMembers;
+    }
+    var member = available[Math.floor(Math.random() * available.length)];
+    discoverRecent.push(member.slug);
+    if (discoverRecent.length > Math.max(1, Math.floor(__discoverMembers.length / 2))) {
+      discoverRecent.shift();
+    }
+
+    discoverCard.style.opacity = '0';
+    setTimeout(function() {
+      discoverName.textContent = member.name;
+      discoverMeta.textContent = (member.city || '') + (member.city ? ' \u00b7 ' : '') + member.type;
+      discoverVisit.href = member.url;
+      discoverCard.style.opacity = '1';
+    }, 150);
+  }
+
+  document.getElementById('discover-shuffle').addEventListener('click', showRandomMember);
+
+  // Show first member when Discover tab is first opened
+  var discoverInitialized = false;
+  tabs.forEach(function(tab) {
+    if (tab.getAttribute('data-tab') === 'discover') {
+      tab.addEventListener('click', function() {
+        if (!discoverInitialized) {
+          discoverInitialized = true;
+          showRandomMember();
+        }
+      });
+    }
   });
 })();
 </script>`)}
