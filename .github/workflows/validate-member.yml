@@ -23,6 +23,8 @@ jobs:
 
       - name: Run validation
         id: validate
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set +e
           OUTPUT=$(npx tsx scripts/validate.ts 2>&1)
