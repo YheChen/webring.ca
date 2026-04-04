@@ -3,11 +3,7 @@ import { execSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { detectWidget } from '../src/utils/widget'
 
-/**
- * Input schema for new member submissions.
- * Derived from Member in src/types.ts — active defaults to true when omitted.
- */
-interface NewMemberInput {
+interface MemberInput {
   slug: string
   name: string
   url: string
@@ -18,7 +14,7 @@ interface NewMemberInput {
 
 const VALID_TYPES = ['developer', 'designer', 'founder', 'other']
 
-function sanitizeMarkdown(text: string): string {
+function sanitize(text: string): string {
   return text.replace(/[[\](){}*_~`#>!|\\]/g, '\\$&')
 }
 
@@ -26,9 +22,10 @@ function write(text: string): void {
   process.stdout.write(text + '\n')
 }
 
+// ── Load current members ──
 const membersPath = resolve(import.meta.dirname!, '..', 'members.json')
 
-let members: NewMemberInput[]
+let members: MemberInput[]
 try {
   members = JSON.parse(readFileSync(membersPath, 'utf-8'))
 } catch {
@@ -37,11 +34,11 @@ try {
   process.exit(1)
 }
 
-let baseMembers: NewMemberInput[] = []
+// ── Load base members ──
+let baseMembers: MemberInput[] = []
 try {
-  const ref = process.env.GITHUB_BASE_REF
-    ? `origin/${process.env.GITHUB_BASE_REF}`
-    : 'main'
+  const ref = process.env.GITHUB_BASE_SHA
+    || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : 'main')
   const base = execSync(`git show ${ref}:members.json`, {
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -51,15 +48,35 @@ try {
   // No base — first time, all members are new
 }
 
+// ── Diff: new, removed, edited ──
 const baseSlugs = new Set(baseMembers.map((m) => m.slug))
-const newMembers = members.filter((m) => !baseSlugs.has(m.slug))
+const currentSlugs = new Set(members.map((m) => m.slug))
+const baseBySlug = new Map(baseMembers.map((m) => [m.slug, m]))
 
-if (newMembers.length === 0) {
+const newMembers = members.filter((m) => !baseSlugs.has(m.slug))
+const removedMembers = baseMembers.filter((m) => !currentSlugs.has(m.slug))
+
+const editedMembers: Array<{ current: MemberInput; base: MemberInput; changedFields: string[] }> = []
+for (const member of members) {
+  const prev = baseBySlug.get(member.slug)
+  if (!prev) continue
+  const changed: string[] = []
+  for (const key of ['name', 'url', 'city', 'type'] as const) {
+    if (member[key] !== prev[key]) changed.push(key)
+  }
+  if (changed.length > 0) {
+    editedMembers.push({ current: member, base: prev, changedFields: changed })
+  }
+}
+
+// ── Nothing changed ──
+if (newMembers.length === 0 && removedMembers.length === 0 && editedMembers.length === 0) {
   write('## Webring Validation\n')
-  write('No new members found in this change.')
+  write('No member changes found in this PR.')
   process.exit(0)
 }
 
+// ── Validate ──
 const existingCount = baseMembers.length
 const appendedCorrectly = newMembers.every((nm) => {
   const idx = members.findIndex((m) => m.slug === nm.slug)
@@ -74,18 +91,74 @@ for (const m of baseMembers) {
   allUrls.add(m.url)
 }
 
-write(`## Webring Validation\n`)
+write('## Webring Validation\n')
 
-for (const member of newMembers) {
-  const results: string[] = []
+// ── Removed members (warn only) ──
+if (removedMembers.length > 0) {
+  write('### Removed Members\n')
+  for (const m of removedMembers) {
+    write(`- WARNING: **${sanitize(m.name)}** (${sanitize(m.url)}) was removed`)
+  }
+  write('')
+}
+
+// ── Edited members ──
+for (const { current, base, changedFields } of editedMembers) {
+  const safeName = sanitize(current.name)
+  const safeUrl = sanitize(current.url)
   let memberFailed = false
 
-  const safeName = sanitizeMarkdown(member.name ?? '')
-  const safeUrl = sanitizeMarkdown(member.url ?? '')
+  write(`### ${safeName} (edited)\n`)
+
+  for (const field of changedFields) {
+    const oldVal = sanitize(String(base[field as keyof MemberInput] ?? ''))
+    const newVal = sanitize(String(current[field as keyof MemberInput] ?? ''))
+    write(`- INFO: \`${field}\` changed: "${oldVal}" → "${newVal}"`)
+  }
+
+  // Re-validate URL if it changed
+  if (changedFields.includes('url')) {
+    write('\n**Site check** (URL changed)')
+
+    if (!current.url.startsWith('https://')) {
+      write(`- FAIL: URL must use HTTPS. Got "${safeUrl}"`)
+      memberFailed = true
+    } else {
+      try {
+        const res = await fetch(current.url, {
+          signal: AbortSignal.timeout(10000),
+          headers: { 'User-Agent': 'webring.ca validator' },
+        })
+        if (res.ok) {
+          write(`- PASS: ${safeUrl} responded with HTTP ${res.status}`)
+        } else {
+          write(`- FAIL: ${safeUrl} returned HTTP ${res.status}. The site must return a 2xx status code.`)
+          memberFailed = true
+        }
+      } catch {
+        write(`- FAIL: ${safeUrl} is unreachable (timed out after 10s or connection refused).`)
+        memberFailed = true
+      }
+    }
+  }
+
+  if (memberFailed) {
+    write('\n**Result: Not ready to merge.** Fix the issues marked FAIL above and push again.')
+    hasFailure = true
+  } else {
+    write('')
+  }
+}
+
+// ── New members ──
+for (const member of newMembers) {
+  let memberFailed = false
+
+  const safeName = sanitize(member.name ?? '')
+  const safeUrl = sanitize(member.url ?? '')
 
   write(`### ${safeName} (${safeUrl})\n`)
 
-  // --- Schema checks ---
   write('**Schema**')
 
   if (!member.slug || !member.name || !member.url || !member.type) {
@@ -96,10 +169,10 @@ for (const member of newMembers) {
   }
 
   if (member.slug && !/^[a-z0-9-]+$/.test(member.slug)) {
-    write(`- FAIL: slug "${sanitizeMarkdown(member.slug)}" must be lowercase alphanumeric and hyphens only (e.g. "jane-doe")`)
+    write(`- FAIL: slug "${sanitize(member.slug)}" must be lowercase alphanumeric and hyphens only (e.g. "jane-doe")`)
     memberFailed = true
   } else if (member.slug) {
-    write(`- PASS: slug "${sanitizeMarkdown(member.slug)}" is valid`)
+    write(`- PASS: slug "${sanitize(member.slug)}" is valid`)
   }
 
   if (member.url && !member.url.startsWith('https://')) {
@@ -110,14 +183,14 @@ for (const member of newMembers) {
   }
 
   if (member.type && !VALID_TYPES.includes(member.type)) {
-    write(`- FAIL: type "${sanitizeMarkdown(member.type)}" is not valid. Must be one of: ${VALID_TYPES.join(', ')}`)
+    write(`- FAIL: type "${sanitize(member.type)}" is not valid. Must be one of: ${VALID_TYPES.join(', ')}`)
     memberFailed = true
   } else if (member.type) {
-    write(`- PASS: type "${sanitizeMarkdown(member.type)}" is valid`)
+    write(`- PASS: type "${sanitize(member.type)}" is valid`)
   }
 
   if (member.slug && allSlugs.has(member.slug)) {
-    write(`- FAIL: slug "${sanitizeMarkdown(member.slug)}" is already taken by another member`)
+    write(`- FAIL: slug "${sanitize(member.slug)}" is already taken by another member`)
     memberFailed = true
   }
 
@@ -131,7 +204,6 @@ for (const member of newMembers) {
     memberFailed = true
   }
 
-  // --- Site reachability ---
   write('\n**Site check**')
 
   try {
@@ -157,7 +229,6 @@ for (const member of newMembers) {
     memberFailed = true
   }
 
-  // --- Result ---
   if (memberFailed) {
     write('\n**Result: Not ready to merge.** Fix the issues marked FAIL above and push again.')
     hasFailure = true
