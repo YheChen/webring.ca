@@ -5,7 +5,7 @@ import { getActiveMembers, getEffectiveRingOrder } from '../data'
 import { CANADA_VIEWBOX, CANADA_OUTLINE_PATH, CANADA_REGION_PATHS, projectToSvg } from '../lib/canada-map'
 import { getMemberCoordinates } from '../utils/member-coords'
 
-const PANEL_NAMES = ['Splash', 'About', 'Directory', 'Join']
+const PANEL_NAMES = ['Splash', 'About', 'Directory', 'Explore', 'Join']
 
 function SplashContent({ active, ringEntrySlug }: { active: Member[]; ringEntrySlug: string }) {
   return (
@@ -134,6 +134,44 @@ function AboutContent() {
             </p>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function SitePreviewContent({ active }: { active: Member[] }) {
+  return (
+    <div class="preview-inner" id="preview-panel">
+      {/* Skeleton loading state */}
+      <div class="preview-skeleton" id="preview-skeleton">
+        <span class="preview-skeleton-label" id="preview-skeleton-name">Loading...</span>
+        <div class="preview-skeleton-shimmer"></div>
+      </div>
+
+      {/* Iframe container — iframe injected by client-side JS */}
+      <div class="preview-iframe-wrap" id="preview-iframe-wrap"></div>
+
+      {/* Fallback card — shown when iframe is blocked */}
+      <div class="preview-fallback" id="preview-fallback" style="display: none;">
+        <div class="preview-fallback-card">
+          <span class="preview-fallback-name" id="preview-fallback-name"></span>
+          <span class="preview-fallback-meta" id="preview-fallback-meta"></span>
+          <a class="preview-fallback-link" id="preview-fallback-link" href="#" target="_blank" rel="noopener noreferrer">
+            Visit site {raw('&rarr;')}
+          </a>
+        </div>
+      </div>
+
+      {/* Controls overlay */}
+      <div class="preview-controls" id="preview-controls">
+        <button class="preview-nav preview-nav-prev" id="preview-prev" aria-label="Previous member">{raw('&#8592;')}</button>
+        <div class="preview-info">
+          <span class="preview-member-name" id="preview-name"></span>
+          <span class="preview-member-sep">{raw('&middot;')}</span>
+          <span class="preview-member-city" id="preview-city"></span>
+        </div>
+        <button class="preview-nav preview-nav-next" id="preview-next" aria-label="Next member">{raw('&#8594;')}</button>
+        <a class="preview-open" id="preview-open" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open site in new tab">{raw('&#8599;')}</a>
       </div>
     </div>
   )
@@ -420,6 +458,32 @@ app.get('/', async (c) => {
             [data-theme="dark"] .flag-white-outline {
               color: var(--fg);
               -webkit-text-stroke-color: transparent;
+            }
+
+            .ring-widget {
+              display: flex;
+              align-items: center;
+              gap: 1cqw;
+              flex-shrink: 0;
+            }
+
+            .ring-widget-arrow {
+              font-family: 'Space Grotesk', sans-serif;
+              font-size: 4cqw;
+              font-weight: 700;
+              color: var(--accent);
+              text-decoration: none;
+              line-height: 1;
+            }
+
+            .ring-widget-leaf {
+              display: flex;
+              align-items: center;
+            }
+
+            .ring-widget-leaf img {
+              height: 6cqw;
+              width: auto;
             }
 
             .splash-map-wrap {
@@ -1035,7 +1099,7 @@ app.get('/', async (c) => {
 
               {/* Panel 1: Splash */}
               <section class="panel" data-index="0" aria-label="Splash section">
-                <SplashContent active={active} />
+                <SplashContent active={active} ringEntrySlug={ringEntrySlug} />
               </section>
 
               {/* Panel 2: About */}
@@ -1048,14 +1112,19 @@ app.get('/', async (c) => {
                 <DirectoryContent active={active} />
               </section>
 
-              {/* Panel 4: Join CTA */}
-              <section class="panel panel--alt" data-index="3" aria-label="Join section">
+              {/* Panel 4: Explore */}
+              <section class="panel panel--alt" data-index="3" aria-label="Explore section">
+                <SitePreviewContent active={active} />
+              </section>
+
+              {/* Panel 5: Join CTA */}
+              <section class="panel" data-index="4" aria-label="Join section">
                 <JoinContent memberCount={active.length} />
               </section>
 
               {/* Clone of first panel (Splash) for forward cycling */}
               <section class="panel panel--clone" aria-hidden="true">
-                <SplashContent active={active} />
+                <SplashContent active={active} ringEntrySlug={ringEntrySlug} />
               </section>
             </div>
             <nav class="ring-dots" aria-label="Panel navigation">
