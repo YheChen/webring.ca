@@ -242,7 +242,7 @@ function init() {
     const member = members.find(m => m.slug === slug)
     if (member) {
       const name = member.name
-      const meta = member.city || member.type
+      const meta = member.city || ''
       tooltipName.text(name)
       tooltipMeta.text(meta)
 

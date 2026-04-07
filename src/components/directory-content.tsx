@@ -9,7 +9,6 @@ export function DirectoryContent({ active }: { active: Member[] }) {
     name: m.name,
     url: m.url,
     city: m.city,
-    type: m.type,
   }))
 
   return (

@@ -17,7 +17,6 @@ const alice: Member = {
   slug: 'alice',
   name: 'Alice',
   url: 'https://alice.example.com',
-  type: 'developer',
   active: true,
 }
 
@@ -25,7 +24,6 @@ const bob: Member = {
   slug: 'bob',
   name: 'Bob',
   url: 'https://bob.example.com',
-  type: 'designer',
   active: false,
 }
 
@@ -144,7 +142,6 @@ describe('getEffectiveRingOrder', () => {
       slug: 'carol',
       name: 'Carol',
       url: 'https://carol.example.com',
-      type: 'founder',
       active: true,
     }
     const kv = createMockKV({

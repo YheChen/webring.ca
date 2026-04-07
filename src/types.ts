@@ -3,7 +3,6 @@ export interface Member {
   name: string
   url: string
   city?: string
-  type: 'developer' | 'designer' | 'founder' | 'other'
   active: boolean
   tags?: string[]
   rss?: string

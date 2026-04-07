@@ -4,9 +4,9 @@ import type { Bindings } from '../types'
 import { createMockKV } from './kv-mock'
 import type { Member } from '../types'
 
-const alice: Member = { slug: 'alice', name: 'Alice', url: 'https://alice.example.com', type: 'developer', active: true }
-const bob: Member = { slug: 'bob', name: 'Bob', url: 'https://bob.example.com', type: 'designer', active: true }
-const charlie: Member = { slug: 'charlie', name: 'Charlie', url: 'https://charlie.example.com', type: 'founder', active: true }
+const alice: Member = { slug: 'alice', name: 'Alice', url: 'https://alice.example.com', active: true }
+const bob: Member = { slug: 'bob', name: 'Bob', url: 'https://bob.example.com', active: true }
+const charlie: Member = { slug: 'charlie', name: 'Charlie', url: 'https://charlie.example.com', active: true }
 
 let kv: KVNamespace
 let app: Hono<{ Bindings: Bindings }>

@@ -6,8 +6,8 @@ import type { Member, HealthStatus } from '../types'
 
 const VALID_WIDGET = '<div data-webring="ca" data-member="alice"></div><a href="https://webring.ca/prev/alice">prev</a><a href="https://webring.ca/next/alice">next</a><script src="https://webring.ca/embed.js"></script>'
 
-const alice: Member = { slug: 'alice', name: 'Alice', url: 'https://alice.example.com', type: 'developer', active: true }
-const bob: Member = { slug: 'bob', name: 'Bob', url: 'https://bob.example.com', type: 'designer', active: true }
+const alice: Member = { slug: 'alice', name: 'Alice', url: 'https://alice.example.com', active: true }
+const bob: Member = { slug: 'bob', name: 'Bob', url: 'https://bob.example.com', active: true }
 
 let originalFetch: typeof globalThis.fetch
 

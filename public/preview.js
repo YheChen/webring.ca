@@ -50,7 +50,7 @@
     skeleton.style.display = 'none';
     if (currentIframe) { currentIframe.remove(); currentIframe = null; }
     fallbackName.textContent = m.name;
-    fallbackMeta.textContent = (m.city ? m.city + ' \\u00b7 ' : '') + m.type;
+    fallbackMeta.textContent = m.city || '';
     fallbackLink.href = m.url;
     fallbackEl.style.display = 'flex';
   }
@@ -120,6 +120,29 @@
     }
   });
 
+  // Show/hide the hint based on settled state
+  function updateOverlayState() {
+    overlay.classList.toggle('is-ready', isSettled);
+  }
+
+  // Escape restores the overlay when parent has focus
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.classList.contains('is-dismissed')) {
+      overlay.classList.remove('is-dismissed');
+      if (currentIframe) currentIframe.blur();
+      window.focus();
+    }
+  });
+
+  // When iframe steals focus, restore overlay once the parent regains it
+  window.addEventListener('blur', function() {
+    if (!overlay.classList.contains('is-dismissed')) return;
+    window.addEventListener('focus', function onFocus() {
+      window.removeEventListener('focus', onFocus);
+      overlay.classList.remove('is-dismissed');
+    });
+  });
+
   // When user scrolls over the dismissed overlay, un-dismiss it so ring handles scroll
   overlay.addEventListener('wheel', function() {
     if (overlay.classList.contains('is-dismissed')) {
@@ -149,12 +172,14 @@
   ringEl.addEventListener('panelunsettle', function() {
     isSettled = false;
     overlay.classList.remove('is-dismissed');
+    updateOverlayState();
   });
 
   // Allow interaction only when ring settles on this panel
   ringEl.addEventListener('panelsettle', function(e) {
     if (e.detail.index === EXPLORE_INDEX && isActive) {
       isSettled = true;
+      updateOverlayState();
     }
   });
 

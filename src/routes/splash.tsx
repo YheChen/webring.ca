@@ -29,7 +29,7 @@ app.get('/', async (c) => {
   ).join('')
 
   const previewMembers = JSON.stringify(active.map((m, i) => ({
-    name: m.name, url: m.url, city: m.city || '', type: m.type, slug: m.slug,
+    name: m.name, url: m.url, city: m.city || '', slug: m.slug,
     frameable: healthStatuses[i]?.frameable ?? true,
   })))
 
@@ -90,8 +90,6 @@ app.get('/', async (c) => {
               {raw(dots)}
             </nav>
           </div>
-
-          <div class="scroll-hint is-hidden" id="scroll-hint">Scroll to explore</div>
 
           <script src="/splash.js"></script>
           {raw(`<script>window.__PREVIEW_MEMBERS = ${previewMembers}</script>`)}
