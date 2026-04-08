@@ -1,6 +1,6 @@
 import type { HealthStatus } from '../types'
 import { getMembers, setMembers, getHealthStatus, setHealthStatus } from '../data'
-import { detectWidget } from '../utils/widget'
+import { detectWidget, extractScriptUrls, detectWidgetInBundle } from '../utils/widget'
 import { notifyDiscord, type HealthEvent } from './notify'
 
 const USER_AGENTS = [
@@ -64,7 +64,26 @@ export async function runHealthCheck(
         }
 
         const body = await res.text()
-        const hasWidget = detectWidget(body, member.slug)
+        let hasWidget = detectWidget(body, member.slug)
+        if (!hasWidget) {
+          const scriptUrls = extractScriptUrls(body, member.url)
+          for (const scriptUrl of scriptUrls) {
+            try {
+              const jsRes = await fetch(scriptUrl, {
+                signal: AbortSignal.timeout(5000),
+                headers: { 'User-Agent': randomUA() },
+              })
+              if (!jsRes.ok) continue
+              const js = await jsRes.text()
+              if (detectWidgetInBundle(js, member.slug)) {
+                hasWidget = true
+                break
+              }
+            } catch {
+              // skip failed script fetches
+            }
+          }
+        }
         const frameable = isFrameable(res.headers)
 
         if (hasWidget) {

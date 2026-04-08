@@ -481,4 +481,21 @@ describe('runHealthCheck', () => {
       [],
     )
   })
+
+  it('marks SPA site as ok when widget is only in JS bundle', async () => {
+    const kv = createMockKV({ members: JSON.stringify([alice]) })
+    const spaHtml = '<html><head><script src="https://alice.example.com/assets/index.js"></script></head><body><div id="root"></div></body></html>'
+    const spaBundle = '{"data-member":"alice"},src:"https://webring.ca/embed.js"'
+    mockFetch({
+      'https://alice.example.com': { ok: true, status: 200, body: spaHtml },
+      'https://alice.example.com/assets/index.js': { ok: true, status: 200, body: spaBundle },
+    })
+
+    await runHealthCheck(kv)
+
+    const raw = await kv.get('health:alice')
+    const status: HealthStatus = JSON.parse(raw!)
+    expect(status.status).toBe('ok')
+    expect(status.consecutiveFails).toBe(0)
+  })
 })

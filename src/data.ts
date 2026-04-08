@@ -38,6 +38,24 @@ export async function getEffectiveRingOrder(kv: KVNamespace): Promise<string[]> 
   return [...normalizedOrder, ...missingSlugs]
 }
 
+export async function getEffectiveRingOrderWithMembers(kv: KVNamespace): Promise<{ order: string[]; members: Member[] }> {
+  const [ringOrder, activeMembers] = await Promise.all([
+    getRingOrder(kv),
+    getActiveMembers(kv),
+  ])
+
+  const activeSlugs = activeMembers.map((m) => m.slug)
+  if (activeSlugs.length === 0) {
+    return { order: [], members: activeMembers }
+  }
+
+  const activeSlugSet = new Set(activeSlugs)
+  const normalizedOrder = ringOrder.filter((slug): slug is string => typeof slug === 'string' && activeSlugSet.has(slug))
+  const missingSlugs = activeSlugs.filter((slug) => !normalizedOrder.includes(slug))
+
+  return { order: [...normalizedOrder, ...missingSlugs], members: activeMembers }
+}
+
 export async function setMembers(kv: KVNamespace, members: Member[]): Promise<void> {
   await kv.put('members', JSON.stringify(members))
 }
