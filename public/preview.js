@@ -19,6 +19,12 @@
   var nextBtn = document.getElementById('preview-next');
   var overlay = document.getElementById('preview-overlay');
 
+  // On touch devices, show "Tap to interact" instead of "Click to interact"
+  if (overlay && window.matchMedia('(max-width: 767px)').matches) {
+    var hint = overlay.querySelector('.preview-overlay-hint');
+    if (hint) hint.textContent = 'Tap to interact';
+  }
+
   var currentIdx = Math.floor(Math.random() * MEMBERS.length);
   var currentIframe = null;
   var loadTimer = null;
@@ -44,6 +50,7 @@
     fallbackEl.style.display = 'none';
     skeleton.style.display = 'flex';
     overlay.classList.remove('is-dismissed', 'is-fading');
+    overlay.classList.add('is-loading');
   }
 
   function showFallback(idx) {
@@ -54,6 +61,7 @@
     fallbackMeta.textContent = m.city || '';
     fallbackLink.href = m.url;
     fallbackEl.style.display = 'flex';
+    overlay.classList.remove('is-loading');
   }
 
   function loadPreview(idx) {
@@ -90,6 +98,7 @@
       } catch(e) {
         skeleton.style.display = 'none';
         iframe.classList.add('is-loaded');
+        overlay.classList.remove('is-loading');
       }
     });
 
