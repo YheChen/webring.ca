@@ -247,8 +247,8 @@ function init() {
 
     function exitFullscreen() {
       isFullscreen = false
-      container.appendChild(svgEl)
-      container.appendChild(zoomWrap)
+      container!.appendChild(svgEl)
+      container!.appendChild(zoomWrap)
       overlay.hidden = true
       document.body.classList.remove('has-ring-fullscreen')
       btnExpand.innerHTML = expandIcon
